@@ -38,6 +38,15 @@ const adminOnly = (req, res, next) => {
     }
 };
 
+const superAdminOnly = (req, res, next) => {
+    if (req.user && req.user.role === 'superAdmin') {
+        next();
+    } else {
+        res.status(403);
+        throw new Error('Not authorized, only superAdmin users can access this resource');
+    }
+};
+
 // Error handling middleware
 const errorHandler = (err, req, res, next) => {
     console.error(err.stack);
@@ -47,6 +56,7 @@ const errorHandler = (err, req, res, next) => {
 module.exports = {
     protect,
     adminOnly,
+    superAdminOnly,
     errorHandler,
 };
 

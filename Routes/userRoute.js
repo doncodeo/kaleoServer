@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {protect, adminOnly, errorHandler} = require('../Middleware/authMiddleWare');
+const {protect, adminOnly, superAdminOnly, errorHandler} = require('../Middleware/authMiddleWare');
 
 const {
     registerUser,

@@ -9,16 +9,17 @@ const {
     loginUser,
     logoutUser,
     deleteUser,
-    updateUser
+    updateUser,
+    getUsersBySubscription,
 } = require('../Controllers/userController');
 
 router.route('/').get(protect, adminOnly, getUsers).post(registerUser);
+router.route('/:id').get(protect, adminOnly, getUsersBySubscription)
 router.route('/create').post(protect, adminOnly, createUser);
 router.route('/login').post(loginUser); 
 router.route('/logout').get(logoutUser);  
-router.route('/:id').delete(protect, adminOnly, deleteUser);    
+router.route('/:id').delete(protect, superAdminOnly, deleteUser);    
 router.route('/update/:id').put(protect, adminOnly, updateUser); 
-
 
 
 // Use the errorHandler middleware

@@ -31,12 +31,20 @@ const protect = asyncHandler(async (req, res, next) => {
 });
 
 const adminOnly = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'superAdmin')) {
         next();
     } else {
-        res.status(403).json({ error: 'Not authorized, only admin users can access this resource' });
+        res.status(403).json({ error: 'Not authorized, only admin and superAdmin users can access this resource' });
     }
 };
+
+// const adminOnly = (req, res, next) => {
+//     if (req.user && req.user.role === 'admin') {
+//         next();
+//     } else {
+//         res.status(403).json({ error: 'Not authorized, only admin users can access this resource' });
+//     }
+// };
 
 const superAdminOnly = (req, res, next) => {
     if (req.user && req.user.role === 'superAdmin') {

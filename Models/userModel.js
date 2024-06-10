@@ -15,11 +15,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  firstName: {
-    type: String,
-    required: true
-  },
-  lastName: {
+  fullName: {
     type: String,
     required: true
   },
@@ -38,20 +34,57 @@ const userSchema = new mongoose.Schema({
   },
   address: {
     type: String,
-    required: true
+    // required: true
+  },
+  disability: {
+    type: String,
+    required: true,
+    enum: ['yes', 'no'],
+    default: 'no'
+  },
+  profileImage: {
+    type: String
   },
   role: {
     type: String,
     enum: ['user', 'admin', 'superAdmin'],
     default: 'user'
   }, 
-  subscription: {
+  membershipPlan: {
     type: String, 
-    enum: ['monthly', 'quarterly', 'annual'],
+    enum: ['single', 'couples', 'organization, group'],
   },
-  profileImage: {
+  subscription: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subscription',
+    required: true,
+  },
+  membershipStatus: {
+    type: String,
+    // required: true,
+    enum: ['active', 'inactive', 'expired'],
+  },
+  startDate: {
+    type: Date,
+    // required: true
+  },
+  endDate:{
+    type: Date
+  },
+  // payment methods and process
+  paymentMethod: {
+    type: String, 
+    enum: ['cash', 'transfer', 'paypal'], 
+  },
+  
+  // Emmergency contact
+  iceName: {
     type: String
   },
+  iceNumber: {
+    type: String
+  }
+
 }, {
   timestamps: true
 });

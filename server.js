@@ -7,21 +7,19 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 5200;
 
-// MongoDB Configuration
-const uri = process.env.MONGO_CONNECTION_STRING;
+// Main function to start the server
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await connectDB();
+    // console.log('MongoDB connected!');
 
-// Connect to MongoDB
-connectDB()
-  .then(() => {
     // Enable CORS
     const allowedOrigins = [
       'http://localhost:5174',
       // Add any other origins as needed
     ];
-
-    app.use(cors({
-      origin: allowedOrigins,
-    }));
+    app.use(cors({ origin: allowedOrigins }));
 
     // Middleware for JSON and URL-encoded data
     app.use(express.json());
@@ -29,12 +27,11 @@ connectDB()
 
     // Routes
     app.use('/api/user', require('./Routes/userRoute'));
+    app.use('/api/subscription', require('./Routes/subscriptionRoute')); 
+    app.use('/api/payment', require('./Routes/paymentRoute'));
 
-    // Serve login.html for /login route
-    // app.get('/login', (req, res) => {
-    //   res.sendFile(path.join(__dirname, 'public', 'login.html'));  
-    // });
-
+    // Serve static files from the 'public' directory (optional)
+    app.use(express.static(path.join(__dirname, 'public')));
 
     // Serve index.html for any other route (excluding OPTIONS method)
     app.get('*', (req, res) => {
@@ -43,145 +40,26 @@ connectDB()
       }
     });
 
-    // Handling Preflight OPTIONS requests
-    app.options('*', cors());
-
     // Start the server
     app.listen(port, () => console.log(`Server started on port ${port}`));
-  })
-  .catch((error) => {
-    console.error('Error connecting to MongoDB:', error);
+  } catch (error) {
+    console.error('Error starting the server:', error);
     process.exit(1);
-  });
+  }
+};
 
+// Start the server
+startServer();
 
+// Handling uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (err) => {
+  console.error(`Uncaught Exception: ${err}`);
+  process.exit(1); // Exit the process with failure
+});
 
-
-// const express = require('express');
-// const cors = require('cors');
-// const dotenv = require('dotenv').config();
-// const connectDB = require('./config/db');
-// const path = require('path');
-
-// const app = express();
-// const port = process.env.PORT || 5200;
-
-// // MongoDB Configuration
-// const uri = process.env.MONGO_CONNECTION_STRING;
-
-// // Connect to MongoDB
-// connectDB()
-//   .then(() => {
-//     // Enable CORS
-//     const allowedOrigins = [
-//       'http://localhost:5174',
-//       // Add any other origins as needed
-//     ];
-
-//     app.use(cors({
-//       origin: allowedOrigins,
-//     }));
-
-//     // Middleware for JSON and URL-encoded data
-//     app.use(express.json());
-//     app.use(express.urlencoded({ extended: false }));
-
-//     // Serve static files from the 'public' directory
-//     app.use(express.static('public'));
-
-//     // Routes
-//     app.use('/api/user', require('./Routes/userRoute'));
-
-//     // Serve login.html for /login route
-//     app.get('/login', (req, res) => {
-//       res.sendFile(path.join(__dirname, 'public', 'login.html'));  
-//     });
-
-//     // Serve index.html for any other route (excluding OPTIONS method)
-//     app.get('*', (req, res) => {
-//       if (req.method !== 'OPTIONS') {
-//         res.sendFile(path.join(__dirname, 'public', 'index.html'));
-//       }
-//     });
-
-//     // Handling Preflight OPTIONS requests
-//     app.options('*', cors());
-
-//     // Start the server
-//     app.listen(port, () => console.log(`Server started on port ${port}`));
-//   })
-//   .catch((error) => {
-//     console.error('Error connecting to MongoDB:', error);
-//     process.exit(1);
-//   });
-
-
-
-
-
-// const express = require('express');
-// const cors = require('cors');
-// const bodyParser = require('body-parser');
-// const dotenv = require('dotenv').config();
-// const { MongoClient } = require('mongodb');
-// const connectDB = require('./config/db');
-// const path = require('path');
-
-// const app = express();
-// const port = process.env.PORT || 5200;
-
-// // MongoDB Configuration
-// const uri = process.env.MONGO_CONNECTION_STRING;
-// const client = new MongoClient(uri);
-
-// // Connect to MongoDB
-// connectDB()
-//   .then(() => {
-//     // Enable CORS
-//     const allowedOrigins = [
-//       'http://localhost:5174',
-//       // Add any other origins as needed
-//     ];
-
-//     app.use(cors({
-//       origin: allowedOrigins,
-//     }));
-
-//     // Middleware for JSON and URL-encoded data
-//     app.use(express.json());
-//     app.use(express.urlencoded({ extended: false }));
-//     app.use(bodyParser.json());
-//     app.use(bodyParser.urlencoded({ extended: true }));
-
-//     // Serve static files from the 'public' directory
-//     app.use(express.static('public'));
-
-//     // Routes
-//     app.use('/api/user', require('./Routes/userRoute'));
-
-
-//     // Serve login.html for /login route
-//     app.get('/login', (req, res) => {
-//       res.sendFile(path.join(__dirname, 'public', 'login.html'));  
-//     });
-
-//     // Serve index.html for any other route (excluding OPTIONS method)
-//     app.get('*', (req, res) => {
-//       if (req.method !== 'OPTIONS') {
-//         res.sendFile(path.join(__dirname, 'public', 'index.html'));
-//       }
-//     });
-
-//     // Handling Preflight OPTIONS requests
-//     app.options('*', cors());
-
-//     // Start the server
-//     app.listen(port, () => console.log(`Server started on port ${port}`));
-//   })
-//   .catch((error) => {
-//     console.error('Error connecting to MongoDB:', error);
-//     process.exit(1);
-//   });
-
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1); // Exit the process with failure
+});
 
 

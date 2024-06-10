@@ -3,13 +3,16 @@ const userData = require('../Models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+// const paypal = require('paypal-rest-sdk');
+const subscriptionData = require('../Models/subscriptionModel');
+
+
 
 function isValidEmail(email) {
   // Regular expression for email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
-
+}  
 
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
@@ -21,10 +24,10 @@ const transporter = nodemailer.createTransport({
 
 const registerUser = asyncHandler(async (req, res) => {
   try {
-    const { username, email, password, firstName, lastName, DOB, gender, phoneNumber, address } = req.body;
+    const { username, email, password, fullName, DOB, gender, phoneNumber, address, subscription } = req.body;
 
     // Check if all required fields are provided
-    if (!username || !email || !password || !firstName || !lastName || !DOB || !gender || !phoneNumber || !address) {
+    if (!username || !email || !password || !fullName || !phoneNumber || !subscription) {
       res.status(400).json({ error: 'Important fields missing!' });
       return;
     }
@@ -58,12 +61,12 @@ const registerUser = asyncHandler(async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
+      fullName,
       DOB,
       gender,
       phoneNumber,
       address,
+      subscription
     });
 
     if (user) {
@@ -112,10 +115,10 @@ const registerUser = asyncHandler(async (req, res) => {
 // Action by only Admin
 const createUser = asyncHandler(async (req, res) => {
   try {
-    const { username, email, password, firstName, lastName, DOB, gender, phoneNumber, address, role, subscription } = req.body;
+    const { username, email, password, fullName, DOB, gender, phoneNumber, address, role, subscription } = req.body;
 
     // Check if all required fields are provided
-    if (!username || !email || !password || !firstName || !lastName || !DOB || !gender || !phoneNumber || !address || !role) {
+    if (!username || !email || !password || !fullName || !DOB || !gender || !phoneNumber || !address || !role || !subscription) {
       res.status(400).json({ error: 'Important fields missing!' });
       return;
     }
@@ -149,8 +152,7 @@ const createUser = asyncHandler(async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
+      fullName,
       DOB,
       gender,
       phoneNumber,
@@ -202,16 +204,40 @@ const createUser = asyncHandler(async (req, res) => {
 });
 
 const getUsers = asyncHandler(async (req, res) => {
-  // Assuming you want to retrieve all users
-  const users = await userData.find();
+  // Assuming the user model has a field `subscription` that stores the subscription ID
+  const users = await userData.find().populate('subscription', 'name');
 
   // Send the users as a response
   res.status(200).json({ success: true, users });
 });
 
+const getUsersBySubscription = asyncHandler(async (req, res) => {
+  try {
+      const subscriptionId = req.params.id;
+
+      // Check if the subscription exists
+      const subscription = await subscriptionData.findById(subscriptionId);
+      if (!subscription) {
+          return res.status(404).json({ error: 'Subscription not found' });
+      }
+
+      // Find users with this subscription
+      // const users = await userData.find({ subscription: subscriptionId }).select('-password');
+
+      // Find users with this subscription and select only the _id and name fields
+      const users = await userData.find({ subscription: subscriptionId }).select('_id username');
+
+      res.status(200).json({ success: true, users });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const loginUser = asyncHandler(async (req, res) => {
   try {
     const { identifier, password } = req.body;
+    console.log(req.body)
 
     // Check if identifier (email or username) and password are provided
     if (!identifier || !password) {
@@ -293,84 +319,6 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// const loginUser = asyncHandler(async (req, res) => {
-//   const { identifier, password } = req.body;
-
-//   // Check if identifier (email or username) and password are provided
-//   if (!identifier || !password) {
-//     res.status(400).json({ error: 'Please provide email/username and password' });
-//     return;
-//   };
-
-//   // Check if the identifier is a valid email
-//   if (isValidEmail(identifier)) {
-//     // Check if the user exists by email
-//     const user = await userData.findOne({ email: identifier });
-
-//     if (!user) {
-//       res.status(401).json({ error: 'Invalid email or password' });
-//       return;
-//     }
-
-//     // Check if the password is correct
-//     const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-//     if (!isPasswordMatch) {
-//       res.status(401).json({ error: 'Invalid email or password' });
-//       return;
-//     }
-
-//     // Generate JWT token
-//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-//       expiresIn: process.env.JWT_EXPIRES_IN,
-//     });
-
-//     res.status(200).json({
-//       status: 'success',
-//       token,
-//       user: {
-//         id: user._id,
-//         username: user.username,
-//         email: user.email,
-//         role: user.role,
-//       },
-//     });
-//   } else {
-//     // Assuming the identifier is a username
-//     // Check if the user exists by username
-//     const user = await userData.findOne({ username: identifier });
-
-//     if (!user) {
-//       res.status(401).json({ error: 'Invalid username or password' });
-//       return;
-//     }
-
-//     // Check if the password is correct
-//     const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-//     if (!isPasswordMatch) {
-//       res.status(401).json({ error: 'Invalid username or password' });
-//       return;
-//     }
-
-//     // Generate JWT token
-//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-//       expiresIn: process.env.JWT_EXPIRES_IN,
-//     });
-
-//     res.status(200).json({
-//       status: 'success',
-//       token,
-//       user: {
-//         id: user._id,
-//         username: user.username,
-//         email: user.email,
-//         role: user.role,
-//       },
-//     });
-//   }
-// });
-
 const logoutUser = asyncHandler(async (req, res) => {
   // Clear the token from the client-side (e.g., delete it from cookies, local storage, etc.)
  
@@ -402,7 +350,6 @@ const deleteUser = asyncHandler(async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 const updateUser = asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -438,81 +385,13 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 });
 
-
-
-// const updateUser = asyncHandler(async (req, res) => {
-//   const userId = req.params.id;
-//   const updates = req.body;
-
-//   try {
-//     // Find the user by ID
-//     let user = await userData.findById(userId);
-
-//     // Check if the user exists
-//     if (!user) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-
-//     // Update user fields
-//     for (const key in updates) {
-//       user[key] = updates[key];
-//     }
-
-//     // Save the updated user
-//     user = await user.save();
-
-//     res.status(200).json({ success: true, user });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
-
-
-// const updateUser = asyncHandler(async (req, res) => {
-//   try {
-//     // Get the user ID from request parameters
-//     const userId = req.params.id;
-
-//     // Check if the user exists
-//     const user = await userData.findById(userId);
-
-//     if (!user) {
-//       res.status(404).json({ error: 'User not found' });
-//       return;
-//     }
-
-//     // Update user data based on request body
-//     const { username, email, firstName, lastName, DOB, gender, phoneNumber, address } = req.body;
-
-//     if (username) user.username = username;
-//     if (email) user.email = email;
-//     if (firstName) user.firstName = firstName;
-//     if (lastName) user.lastName = lastName;
-//     if (DOB) user.DOB = DOB;
-//     if (gender) user.gender = gender;
-//     if (phoneNumber) user.phoneNumber = phoneNumber;
-//     if (address) user.address = address;
-
-//     // Save the updated user data
-//     await user.save();
-
-//     res.status(200).json({ success: true, message: 'User updated successfully', user });
-//   } catch (error) {
-//     console.error(error); // Log any errors to the console for debugging
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
-
-
 module.exports = { 
     registerUser,
     createUser,
     getUsers,
+    getUsersBySubscription,
     loginUser,
     logoutUser,
     deleteUser,
-    updateUser
+    updateUser,
 };

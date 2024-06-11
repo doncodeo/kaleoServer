@@ -16,6 +16,7 @@ const startServer = async () => {
 
     // Enable CORS
     const allowedOrigins = [
+      'http://localhost:5173',
       'http://localhost:5174',
       // Add any other origins as needed
     ];
@@ -26,6 +27,11 @@ const startServer = async () => {
     app.use(express.urlencoded({ extended: false }));
 
     // Routes
+  
+    app.use('/test', (req, res) => {
+      const testData = "This is a test";
+      res.json({ receivedData: testData });
+    })
     app.use('/api/user', require('./Routes/userRoute'));
     app.use('/api/subscription', require('./Routes/subscriptionRoute')); 
     app.use('/api/payment', require('./Routes/paymentRoute'));

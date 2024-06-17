@@ -16,7 +16,7 @@ const {
     updatePassword,
 } = require('../Controllers/userController');
 
-router.route('/').get(protect, adminOnly, getUsers).post(registerUser);
+router.route('/').get(getUsers).post(registerUser);
 router.route('/:id').get(protect, adminOnly, getUsersBySubscription)
 router.route('/update-password/:id').put(updatePassword);
 router.route('/create').post(protect, adminOnly, createUser);

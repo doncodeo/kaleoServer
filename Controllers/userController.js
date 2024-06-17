@@ -212,7 +212,7 @@ const createUser = asyncHandler(async (req, res) => {
     const { username, email, password, fullName, DOB, gender, phoneNumber, address, role, subscription } = req.body;
 
     // Check if all required fields are provided
-    if (!username || !email || !password || !fullName || !DOB || !gender || !phoneNumber || !role || !subscription) {
+    if (!username || !email || !password || !fullName || !DOB || !gender || !phoneNumber || !role) {
       return res.status(400).json({ error: 'Important fields missing!' });
     }
 
@@ -356,13 +356,35 @@ const createUser = asyncHandler(async (req, res) => {
   }
 });
 
-
-
 const getUsers = asyncHandler(async (req, res) => {
   try {
     const users = await userData.find().populate('subscriptions.subscriptionId', 'name duration price');
 
     res.status(200).json({ success: true, users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+const getUserById = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    // Find the user by ID and populate the subscriptionId in subscriptions array
+    const user = await userData.findById(userId)
+      .populate({
+        path: 'subscriptions.subscriptionId',
+        model: 'Subscription'
+      })
+      .select('-password'); // Exclude password from the response
+
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -917,6 +939,7 @@ module.exports = {
     registerUser,
     createUser,
     getUsers,
+    getUserById,
     getUsersBySubscription,
     loginUser,
     logoutUser,

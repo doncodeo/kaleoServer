@@ -75,7 +75,7 @@ const userSchema = new mongoose.Schema({
     enum: ['single', 'couples', 'organization, group'],
   },
   subscriptions: [subscriptionDetailsSchema], // Array of subscriptions
-  paymentMethod: {
+  paymentMethod: { 
     type: String,
     enum: ['cash', 'transfer', 'paypal'],
   },

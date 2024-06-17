@@ -23,7 +23,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-
 const registerUser = asyncHandler(async (req, res) => {
   try {
     const { username, email, password, fullName, DOB, gender, phoneNumber, address, subscription } = req.body;
@@ -205,7 +204,6 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 const createUser = asyncHandler(async (req, res) => {
   try {

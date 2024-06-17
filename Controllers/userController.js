@@ -141,100 +141,6 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 
-
-
-
-// const registerUser = asyncHandler(async (req, res) => {
-//   try {
-//     const { username, email, password, fullName, DOB, gender, phoneNumber, address, subscription } = req.body;
-
-//     // Check if all required fields are provided
-//     if (!username || !email || !password || !fullName || !phoneNumber || !subscription) {
-//       res.status(400).json({ error: 'Important fields missing!' });
-//       return;
-//     }
-//     console.log(subscription)
-//     // Check if email is in a valid format
-//     if (!isValidEmail(email)) {
-//       res.status(400).json({ error: 'Please provide a valid email' });
-//       return;
-//     }
-
-//     // Check for existing user by email or username
-//     const userExistByEmail = await userData.findOne({ email });
-//     const userExistByUsername = await userData.findOne({ username });
-
-//     if (userExistByEmail) {
-//       console.log("User already exists with email:", email);
-//       return res.status(400).json({ error: "User already exists with this email." });
-//     }
- 
-//     if (userExistByUsername) {
-//       console.log("User already exists with username:", username);
-//       return res.status(400).json({ error: "User already exists with this username." });
-//     }  
-
-//     // Hash password
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, salt);
-
-//     // Create user
-//     const user = await userData.create({
-//       username,
-//       email,
-//       password: hashedPassword,
-//       fullName,
-//       DOB,
-//       gender,
-//       phoneNumber,
-//       address,
-//       subscription
-//     });
-
-//     if (user) {
-//       console.log('User created:', user.email);
-
-//       // Send confirmation email
-//       const mailOptions = {
-//         // from: process.env.EMAIL_USERNAME,
-//         from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
-//         to: user.email,
-//         subject: 'Registration Confirmation',
-//         html: `<p>Dear ${user.username},</p><p>Thank you for registering with us!</p>`
-//       };
-
-//       transporter.sendMail(mailOptions, (error, info) => {
-//         if (error) {
-//           console.error('Error sending email:', error);
-//         } else {
-//           console.log('Email sent:', info.response);
-//         }
-//       });
-
-//       res.status(201).json({ user });
-//     } else {
-//       console.log('User creation failed');
-//       res.status(400).json({ error: 'Invalid user data' });
-//     }
-
-//     console.log('User registration completed'); // Log exit point
-
-//   } catch (error) {
-//     console.error(error);
-//     if (error.code === 11000) {
-//       // MongoDB duplicate key error
-//       if (error.keyPattern.email) {
-//         return res.status(400).json({ error: "User already exists with this email." });
-//       }
-//       if (error.keyPattern.username) {
-//         return res.status(400).json({ error: "User already exists with this username." });
-//       }
-//     }
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
-// Action by only Admin
 const createUser = asyncHandler(async (req, res) => {
   try {
     const { username, email, password, fullName, DOB, gender, phoneNumber, address, role, subscription } = req.body;
@@ -359,7 +265,6 @@ const getUsersBySubscription = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   try {
     const { identifier, password } = req.body;
-    console.log(req.body)
 
     // Check if identifier (email or username) and password are provided
     if (!identifier || !password) {

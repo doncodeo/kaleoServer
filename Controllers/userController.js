@@ -28,7 +28,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const { username, email, password, fullName, DOB, gender, phoneNumber, address, subscription } = req.body;
 
     // Check if all required fields are provided
-    if (!username || !email || !password || !fullName || !phoneNumber || !subscription) {
+    if (!username || !email || !password || !fullName || !phoneNumber ) {
       return res.status(400).json({ error: 'Important fields missing!' });
     }
 

@@ -23,59 +23,59 @@ const verifyFlutterwaveSignature = (req) => {
     return hash === signature;
   };
   
-
 // Create Payment
 const createPayment = asyncHandler(async (req, res) => {
-    const { userId, subscriptionId } = req.body;
+  const { userId, subscriptionId } = req.body;
 
-    const user = await User.findById(userId);
-    const subscription = await Subscription.findById(subscriptionId);
+  try {
+      const user = await User.findById(userId);
+      const subscription = await Subscription.findById(subscriptionId);
 
-    if (!user || !subscription) {
-        res.status(404).json({ error: 'User or Subscription not found' });
-        return;
-    }
+      if (!user || !subscription) {
+          res.status(404).json({ error: 'User or Subscription not found' });
+          return;
+      }
 
-    const amount = subscription.price; // Fetch the amount from the subscription
+      const amount = subscription.price; // Fetch the amount from the subscription
 
-    const payment = new Payment({
-        userId,
-        subscriptionId,
-        amount,
-        status: 'pending'
-    });
+      const payment = new Payment({
+          userId,
+          subscriptionId,
+          amount,
+          status: 'pending'
+      });
 
-    const savedPayment = await payment.save();
+      const savedPayment = await payment.save();
 
-    const paymentData = {
-        tx_ref: savedPayment._id.toString(),
-        amount: savedPayment.amount,
-        currency: 'NGN',
-        // redirect_url: 'http://localhost:5200/payment-success',
-        // redirect_url: '  https://c94c-102-91-14-146.ngrok-free.app/payment-success',
-        redirect_url: 'http://localhost:5200/',
+      const paymentData = {
+          tx_ref: savedPayment._id.toString(),
+          amount: savedPayment.amount,
+          currency: 'NGN',
+          redirect_url: 'http://localhost:5200/', // Make sure this URL is correct and accessible
+          customer: {
+              email: user.email,
+              phonenumber: user.phoneNumber,
+              name: user.fullName
+          },
+          customizations: {
+              title: 'Subscription Payment',
+              description: `Payment for ${subscription.name}`,
+              logo: 'YOUR_LOGO_URL'
+          }
+      };
 
+      const response = await axios.post('https://api.flutterwave.com/v3/payments', paymentData, {
+          headers: {
+              Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`  
+          }
+      });
 
-        customer: {
-            email: user.email,
-            phonenumber: user.phoneNumber,
-            name: user.fullName
-        },
-        customizations: {
-            title: 'Subscription Payment',
-            description: `Payment for ${subscription.name}`,
-            logo: 'YOUR_LOGO_URL'
-        }
-    }; 
-
-    const response = await axios.post('https://api.flutterwave.com/v3/payments', paymentData, {
-        headers: {
-            Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`
-        }
-    });
-
-    res.json({ paymentLink: response.data.data.link });
-}); 
+      res.json({ paymentLink: response.data.data.link });
+  } catch (error) {
+      console.error('Payment creation error:', error.response ? error.response.data : error.message);
+      res.status(500).json({ error: 'Payment creation failed' });
+  }
+});
 
 // Helper function to calculate end date based on subscription duration
 const calculateEndDate = (startDate, duration) => {
@@ -101,7 +101,6 @@ const calculateEndDate = (startDate, duration) => {
     }
     return endDate;
 };
-
 
 const handleWebhook = asyncHandler(async (req, res) => {
     // if (!verifyFlutterwaveSignature(req)) {

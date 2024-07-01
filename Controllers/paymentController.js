@@ -6,21 +6,38 @@ const Subscription = require('../Models/subscriptionModel');
 const axios = require('axios');
 const schedule = require('node-schedule')
 
-const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
+// const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
 
-const verifyFlutterwaveSignature = (req) => {
-    const signature = req.headers['verif-hash'] || req.headers['Flutterwave-Event']; // Check for both headers
-    if (!signature) {
+// const verifyFlutterwaveSignature = (req) => {
+//     const signature = req.headers['verif-hash'] || req.headers['Flutterwave-Event']; // Check for both headers
+//     if (!signature) {
+//       return false;
+//     }
+  
+//     const secretHash = FLUTTERWAVE_WEBHOOK_SECRET.toString(); // Ensure secret is a string
+//     const hash = crypto.createHmac('sha256', secretHash)
+//       .update(JSON.stringify(req.body, null, 2)) // Stringify with UTF-8 encoding
+//       .digest('hex');
+//       console.log(hash)
+  
+//     return hash === signature;
+//   };
+
+  const verifyFlutterwaveSignature = (req) => {
+    const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET;
+    const signature = req.headers['verif-hash'];
+    
+    if (!secretHash || !signature) {
       return false;
     }
   
-    const secretHash = FLUTTERWAVE_WEBHOOK_SECRET.toString(); // Ensure secret is a string
-    const hash = crypto.createHmac('sha256', secretHash)
-      .update(JSON.stringify(req.body, null, 2)) // Stringify with UTF-8 encoding
-      .digest('hex');
-      console.log(hash)
-  
-    return hash === signature;
+    const generatedHash = crypto.createHmac('sha256', secretHash)
+                                 .update(JSON.stringify(req.body))
+                                 .digest('hex');
+
+                                 console.log(generatedHash)
+    
+    return generatedHash === signature; 
   };
   
 // Create Payment
@@ -103,89 +120,178 @@ const calculateEndDate = (startDate, duration) => {
 };
 
 const handleWebhook = asyncHandler(async (req, res) => {
-    // if (!verifyFlutterwaveSignature(req)) {
-    //   return res.status(400).json({ error: 'Invalid signature' });
-    // }
-  
-    const { tx_ref, status, flw_ref, payment_type, id: transaction_id, created_at } = req.body.data;
-  
-    const payment = await Payment.findById(tx_ref);
-  
-    if (!payment) {
+  // console.log('Webhook received:', JSON.stringify(req.body, null, 2));
+
+  // if (!verifyFlutterwaveSignature(req)) {
+  //     console.log('Invalid signature:', req.headers['verif-hash']);
+  //     return res.status(400).json({ error: 'Invalid signature' });
+  // }
+
+  // Destructure the needed properties directly from req.body
+  const { txRef, status, flwRef, payment_type, id: transaction_id, createdAt: created_at } = req.body;
+
+  const payment = await Payment.findById(txRef);
+
+  if (!payment) {
+      console.log('Payment not found for txRef:', txRef);
       return res.status(404).json({ error: 'Payment not found' });
-    }
-  
-    // Check if the payment status is already 'success' to avoid reprocessing
-    if (payment.status === 'success') {
+  }
+
+  if (payment.status === 'success') {
+      console.log('Payment already processed successfully for txRef:', txRef);
       return res.status(200).send('Payment already processed successfully');
-    }
-  
-    try {
+  }
+
+  try {
       if (status !== 'successful') {
-        throw new Error('Payment failed');
+          throw new Error('Payment failed');
       }
-  
+
       const user = await User.findById(payment.userId);
       if (!user) {
-        throw new Error('User not found');
+          throw new Error('User not found');
       }
-  
+
       const subscription = await Subscription.findById(payment.subscriptionId);
       if (!subscription) {
-        throw new Error('Subscription not found');
+          throw new Error('Subscription not found');
       }
-  
+
       const startDate = new Date();
       const endDate = calculateEndDate(startDate, subscription.duration);
-  
-      // Update payment status to success and add additional information
+
       payment.status = 'success';
-      payment.paymentReference = flw_ref;
+      payment.paymentReference = flwRef;
       payment.paymentMethod = payment_type;
       payment.transactionId = transaction_id;
       payment.transactionDate = new Date(created_at);
       await payment.save();
-  
-      // Find or create the subscription details in user's subscriptions array
+
       const subscriptionIndex = user.subscriptions.findIndex(sub => sub.subscriptionId.toString() === payment.subscriptionId.toString());
-  
+
       if (subscriptionIndex === -1) {
-        user.subscriptions.push({
-          subscriptionId: payment.subscriptionId,
-          startDate,
-          endDate,
-          status: 'active'
-        });
+          user.subscriptions.push({
+              subscriptionId: payment.subscriptionId,
+              startDate,
+              endDate,
+              status: 'active'
+          });
       } else {
-        user.subscriptions[subscriptionIndex].status = 'active';
-        user.subscriptions[subscriptionIndex].startDate = startDate;
-        user.subscriptions[subscriptionIndex].endDate = endDate;
+          user.subscriptions[subscriptionIndex].status = 'active';
+          user.subscriptions[subscriptionIndex].startDate = startDate;
+          user.subscriptions[subscriptionIndex].endDate = endDate;
       }
-  
+
       await user.save();
-  
-      // Schedule a job to handle membership expiration
+
       schedule.scheduleJob(endDate, async () => {
-        const now = new Date();
-        if (now >= endDate) {
-          const subToUpdate = user.subscriptions.find(sub => sub.subscriptionId.toString() === payment.subscriptionId.toString());
-          if (subToUpdate && subToUpdate.status === 'active') {
-            subToUpdate.status = 'inactive';
-            await user.save(); // Save the updated user document
-  
-            // Log or notify about the state change
-            console.log(`Subscription ${subscription.name} for user ${user.username} has expired and set to inactive.`);
+          const now = new Date();
+          if (now >= endDate) {
+              const subToUpdate = user.subscriptions.find(sub => sub.subscriptionId.toString() === payment.subscriptionId.toString());
+              if (subToUpdate && subToUpdate.status === 'active') {
+                  subToUpdate.status = 'inactive';
+                  await user.save();
+                  console.log(`Subscription ${subscription.name} for user ${user.username} has expired and set to inactive.`);
+              }
           }
-        }
       });
-  
+
       res.status(200).send('Webhook handled successfully');
-    } catch (error) {
+  } catch (error) {
       payment.status = 'failed';
       await payment.save();
-      return res.status(400).json({ error: error.message });
-    }
-  });
+      console.error('Error handling webhook:', error.message);
+      res.status(400).json({ error: error.message });
+  }
+});
+
+
+// const handleWebhook = asyncHandler(async (req, res) => {
+//     // if (!verifyFlutterwaveSignature(req)) {
+//     //   return res.status(400).json({ error: 'Invalid signature' });
+//     // }
+
+//     console.log('Webhook received:', JSON.stringify(req.body, null, 2));
+  
+//     const { tx_ref, status, flw_ref, payment_type, id: transaction_id, created_at } = req.body;
+  
+//     const payment = await Payment.findById(tx_ref);
+  
+//     if (!payment) {
+//       return res.status(404).json({ error: 'Payment not found' });
+//     }
+  
+//     // Check if the payment status is already 'success' to avoid reprocessing
+//     if (payment.status === 'success') {
+//       return res.status(200).send('Payment already processed successfully');
+//     }
+  
+//     try {
+//       if (status !== 'successful') {
+//         throw new Error('Payment failed');
+//       }
+  
+//       const user = await User.findById(payment.userId);
+//       if (!user) {
+//         throw new Error('User not found');
+//       }
+  
+//       const subscription = await Subscription.findById(payment.subscriptionId);
+//       if (!subscription) {
+//         throw new Error('Subscription not found');
+//       }
+  
+//       const startDate = new Date();
+//       const endDate = calculateEndDate(startDate, subscription.duration);
+  
+//       // Update payment status to success and add additional information
+//       payment.status = 'success';
+//       payment.paymentReference = flw_ref;
+//       payment.paymentMethod = payment_type;
+//       payment.transactionId = transaction_id;
+//       payment.transactionDate = new Date(created_at);
+//       await payment.save();
+  
+//       // Find or create the subscription details in user's subscriptions array
+//       const subscriptionIndex = user.subscriptions.findIndex(sub => sub.subscriptionId.toString() === payment.subscriptionId.toString());
+  
+//       if (subscriptionIndex === -1) {
+//         user.subscriptions.push({
+//           subscriptionId: payment.subscriptionId,
+//           startDate,
+//           endDate,
+//           status: 'active'
+//         });
+//       } else {
+//         user.subscriptions[subscriptionIndex].status = 'active';
+//         user.subscriptions[subscriptionIndex].startDate = startDate;
+//         user.subscriptions[subscriptionIndex].endDate = endDate;
+//       }
+  
+//       await user.save();
+  
+//       // Schedule a job to handle membership expiration
+//       schedule.scheduleJob(endDate, async () => {
+//         const now = new Date();
+//         if (now >= endDate) {
+//           const subToUpdate = user.subscriptions.find(sub => sub.subscriptionId.toString() === payment.subscriptionId.toString());
+//           if (subToUpdate && subToUpdate.status === 'active') {
+//             subToUpdate.status = 'inactive';
+//             await user.save(); // Save the updated user document
+  
+//             // Log or notify about the state change
+//             console.log(`Subscription ${subscription.name} for user ${user.username} has expired and set to inactive.`);
+//           }
+//         }
+//       });
+  
+//       res.status(200).send('Webhook handled successfully');
+//     } catch (error) {
+//       payment.status = 'failed';
+//       await payment.save();
+//       return res.status(400).json({ error: error.message });
+//     }
+//   });
 
 const getUserPaymentHistory = asyncHandler(async (req, res) => {
     const userId = req.params.userId;

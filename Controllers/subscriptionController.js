@@ -63,28 +63,6 @@ const deleteSubscription = asyncHandler(async (req, res) => {
   }
 });
 
-// const deleteSubscription = asyncHandler(async (req, res) => {
-//   try {
-//     const subscriptionId = req.params.id;
-
-//     // Find the subscription by ID
-//     const subscription = await subscriptionData.findById(subscriptionId);
-
-//     if (!subscription) {
-//       res.status(404).json({ error: 'Subscription not found' });
-//       return;
-//     }
-
-//     // Delete the subscription
-//     await subscription.deleteOne();
-
-//     res.status(200).json({ success: true, message: 'Subscription deleted successfully' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
 const updateSubscription = asyncHandler(async (req, res) => {
   try {
     const subscriptionId = req.params.id;
@@ -123,7 +101,6 @@ const getAllSubscriptions = asyncHandler(async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 module.exports = {
     createSubscription,

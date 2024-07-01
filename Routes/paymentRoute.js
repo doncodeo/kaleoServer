@@ -10,7 +10,7 @@ const {
  } = require('../Controllers/paymentController');
 
 router.route('/').get(protect, adminOnly, getAllUsersPaymentHistory).post(createPayment);
-router.route('/:userId').get(protect, getUserPaymentHistory);
+router.route('/:userId').get(protect, getUserPaymentHistory); 
 router.route('/webhook').post(handleWebhook);
 
 module.exports = router;

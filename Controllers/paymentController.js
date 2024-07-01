@@ -68,7 +68,7 @@ const createPayment = asyncHandler(async (req, res) => {
           tx_ref: savedPayment._id.toString(),
           amount: savedPayment.amount,
           currency: 'NGN',
-          redirect_url: 'http://localhost:5200/', // Make sure this URL is correct and accessible
+          redirect_url: 'https://kaleoserver.onrender.com/', // Make sure this URL is correct and accessible
           customer: {
               email: user.email,
               phonenumber: user.phoneNumber,

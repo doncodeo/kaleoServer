@@ -6,7 +6,8 @@ const nodemailer = require('nodemailer');
 // const paypal = require('paypal-rest-sdk');
 const subscriptionData = require('../Models/subscriptionModel');
 const crypto = require('crypto');
-
+const cloudinary = require('../config/cloudinary');
+const { sendRegistrationConfirmation, passwordResetMail } = require('../Middleware/emailService'); 
 
 
 function isValidEmail(email) {
@@ -23,6 +24,12 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Helper function to convert date string to Date object
+const parseDate = (dateString) => {
+  const [day, month, year] = dateString.split('/');
+  return new Date(`${year}-${month}-${day}`);
+};
+
 const registerUser = asyncHandler(async (req, res) => {
   try {
     const { username, email, password, fullName, DOB, gender, phoneNumber, address, subscription } = req.body;
@@ -32,9 +39,16 @@ const registerUser = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'Important fields missing!' });
     }
 
+    let parsedDOB;
+    try {
+      parsedDOB = parseDate(DOB);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid date format for DOB' });
+    }
+
     // Validate email format
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Please provide a valid email' });
+      return res.status(400).json({ error: 'Please provide a valid email' }); 
     }
 
     // Check for existing user by email or username
@@ -89,7 +103,7 @@ const registerUser = asyncHandler(async (req, res) => {
       email,
       password: hashedPassword,
       fullName,
-      DOB,
+      DOB:parsedDOB,
       gender,
       phoneNumber,
       address,
@@ -108,86 +122,8 @@ const registerUser = asyncHandler(async (req, res) => {
     console.log('User created:', user.email);
 
     // Send confirmation email
-    const mailOptions = {
-      from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
-      to: user.email,
-      subject: 'Registration Confirmation',
-      html: `
-        <html>
-          <head>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                background-color: #f0f0f0;
-                color: #333;
-                padding: 20px;
-              }
-              .container {
-                max-width: 600px;
-                margin: 0 auto;
-                background-color: #ffffff;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-              }
-              .header {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px;
-                text-align: center;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-              }
-              .content {
-                padding: 20px;
-              }
-              .login-button {
-                display: inline-block;
-                padding: 10px 20px;
-                background-color: #4CAF50;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-              }
-              .footer {
-                margin-top: 20px;
-                text-align: center;
-                color: #666;
-                font-size: 12px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>Welcome to Kaleo Gym!</h2>
-              </div>
-              <div class="content">
-                <p>Dear ${user.username},</p>
-                <p>Thank you for registering with Kaleo Gym! We're excited to have you on board.</p>
-                <p>Please use the following button to log in to your account:</p>
-                <a class="login-button" href="http://localhost:3000/login" target="_blank">Login to Your Account</a>
-                <p>We look forward to helping you achieve your fitness goals.</p>
-              </div>
-              <div class="footer">
-                <p>Best regards,</p>
-                <p>The Kaleo Gym Team</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `
-    };
+    await sendRegistrationConfirmation(user);
     
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('Error sending email:', error);
-      } else {
-        console.log('Email sent:', info.response);
-      }
-    });
-
     res.status(201).json({ user });
 
   } catch (error) {
@@ -256,84 +192,8 @@ const createUser = asyncHandler(async (req, res) => {
     console.log('User created:', user.email);
 
     // Send confirmation email
-    const mailOptions = {
-      from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
-      to: user.email,
-      subject: 'Registration Confirmation',
-      html: `
-        <html>
-          <head>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                background-color: #f0f0f0;
-                color: #333;
-                padding: 20px;
-              }
-              .container {
-                max-width: 600px;
-                margin: 0 auto;
-                background-color: #ffffff;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-              }
-              .header {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px;
-                text-align: center;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-              }
-              .content {
-                padding: 20px;
-              }
-              .footer {
-                margin-top: 20px;
-                text-align: center;
-                color: #666;
-                font-size: 12px;
-              }
-              .button {
-                display: inline-block;
-                background-color: #4CAF50;
-                color: white;
-                text-decoration: none;
-                padding: 10px 20px;
-                border-radius: 5px;
-                margin-top: 15px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>Welcome to Kaleo Gym!</h2>
-              </div>
-              <div class="content">
-                <p>Dear ${user.username},</p>
-                <p>Thank you for registering with Kaleo Gym! Your account has been successfully created.</p>
-                <p>Please click the button below to log in to your account:</p>
-                <a href="http://yourfrontendurl/login" class="button">Log In</a>
-              </div>
-              <div class="footer">
-                <p>Best regards,</p>
-                <p>The Kaleo Gym Team</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('Error sending email:', error);
-      } else {
-        console.log('Email sent:', info.response);
-      }
-    });
+      await sendRegistrationConfirmation(user);
+    
 
     res.status(201).json({ user });
 
@@ -567,6 +427,42 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 });
 
+const updateProfileImage = asyncHandler(async (req, res) => {
+  try {
+      const userId = req.params.id; 
+      const file = req.file;
+
+      // Get the user's current profile image details
+      const user = await userData.findById(userId);
+      
+      if (!file) {
+          return res.status(400).json({ error: 'No file uploaded' });
+      }
+     
+      // Upload image to Cloudinary
+      const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'avatar',
+          public_id: `${userId}-${Date.now()}` // Unique ID for the image
+      });
+
+      // Delete the old profile image from Cloudinary if it exists
+      if (user.cloudinary_id) {
+          await cloudinary.uploader.destroy(user.cloudinary_id);
+      }
+
+      // Update user profile with new image URL and Cloudinary ID
+      user.profileImage = result.secure_url;
+      user.cloudinary_id = result.public_id;
+      await user.save();
+
+      res.status(200).json({ message: 'Profile image updated successfully', profileImage: user.profileImage });
+
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const updatePassword = asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { newPassword } = req.body;
@@ -686,78 +582,79 @@ const initiatePasswordReset = asyncHandler(async (req, res) => {
   // Send reset email
   const resetURL = `http://localhost:3000/reset/${resetToken}`; // Replace with your frontend reset URL
 
-  const mailOptions = {
-    to: user.email,
-    from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
-    subject: 'Password Reset Link',
-    html: `
-      <html>
-        <head>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f0f0f0;
-              color: #333;
-              padding: 20px;
-            }
-            .container {
-              max-width: 600px;
-              margin: 0 auto;
-              background-color: #ffffff;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            }
-            .header {
-              background-color: #4CAF50;
-              color: white;
-              padding: 10px;
-              text-align: center;
-              border-top-left-radius: 8px;
-              border-top-right-radius: 8px;
-            }
-            .content {
-              padding: 20px;
-            }
-            .reset-button {
-              display: inline-block;
-              padding: 10px 20px;
-              background-color: #4CAF50;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-            }
-            .footer {
-              margin-top: 20px;
-              text-align: center;
-              color: #666;
-              font-size: 12px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>Password Reset Link</h2>
-            </div>
-            <div class="content">
-              <p>You are receiving this email because you (or someone else) has requested the reset of the password for your account.</p>
-              <p>Please click on the following button to reset your password:</p>
-              <a class="reset-button" href="${resetURL}" target="_blank">Reset Password</a>
-              <p>If you did not request this password reset, please take immediate action to secure your account by changing your password or contacting support.</p>
-            </div>
-            <div class="footer">
-              <p>Thank you,</p>
-              <p>The Kaleo Team</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  };
-  
+  await passwordResetMail(user);
+    
+  // const mailOptions = {
+  //   to: user.email,
+  //   from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
+  //   subject: 'Password Reset Link',
+  //   html: `
+  //     <html>
+  //       <head>
+  //         <style>
+  //           body {
+  //             font-family: Arial, sans-serif;
+  //             background-color: #f0f0f0;
+  //             color: #333;
+  //             padding: 20px;
+  //           }
+  //           .container {
+  //             max-width: 600px;
+  //             margin: 0 auto;
+  //             background-color: #ffffff;
+  //             padding: 20px;
+  //             border-radius: 8px;
+  //             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  //           }
+  //           .header {
+  //             background-color: #4CAF50;
+  //             color: white;
+  //             padding: 10px;
+  //             text-align: center;
+  //             border-top-left-radius: 8px;
+  //             border-top-right-radius: 8px;
+  //           }
+  //           .content {
+  //             padding: 20px;
+  //           }
+  //           .reset-button {
+  //             display: inline-block;
+  //             padding: 10px 20px;
+  //             background-color: #4CAF50;
+  //             color: white;
+  //             text-decoration: none;
+  //             border-radius: 5px;
+  //           }
+  //           .footer {
+  //             margin-top: 20px;
+  //             text-align: center;
+  //             color: #666;
+  //             font-size: 12px;
+  //           }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <div class="container">
+  //           <div class="header">
+  //             <h2>Password Reset Link</h2>
+  //           </div>
+  //           <div class="content">
+  //             <p>You are receiving this email because you (or someone else) has requested the reset of the password for your account.</p>
+  //             <p>Please click on the following button to reset your password:</p>
+  //             <a class="reset-button" href="${resetURL}" target="_blank">Reset Password</a>
+  //             <p>If you did not request this password reset, please take immediate action to secure your account by changing your password or contacting support.</p>
+  //           </div>
+  //           <div class="footer">
+  //             <p>Thank you,</p>
+  //             <p>The Kaleo Team</p>
+  //           </div>
+  //         </div>
+  //       </body>
+  //     </html>
+  //   `
+  // }
 
-  await transporter.sendMail(mailOptions);
+  // await transporter.sendMail(mailOptions);
 
   res.status(200).json({ success: true, message: 'Password reset link sent to your email' });
 });
@@ -789,149 +686,74 @@ const resetPassword = asyncHandler(async (req, res) => {
   // Save updated user
   await user.save();
 
-  // Optionally, send an email notifying the user of password change
-  const mailOptions = {
-    from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
-    to: user.email,
-    subject: 'Your Password Has Been Changed',
-    html: `
-      <html>
-        <head>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f0f0f0;
-              color: #333;
-              padding: 20px;
-            }
-            .container {
-              max-width: 600px;
-              margin: 0 auto;
-              background-color: #ffffff;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            }
-            .header {
-              background-color: #4CAF50;
-              color: white;
-              padding: 10px;
-              text-align: center;
-              border-top-left-radius: 8px;
-              border-top-right-radius: 8px;
-            }
-            .content {
-              padding: 20px;
-            }
-            .footer {
-              margin-top: 20px;
-              text-align: center;
-              color: #666;
-              font-size: 12px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>Your Password Has Been Changed</h2>
-            </div>
-            <div class="content">
-              <p>Hello,</p>
-              <p>This is a confirmation that the password for your account <strong>${user.email}</strong> has just been changed.</p>
-              <p>If you did not make this change, please contact our support immediately.</p>
-            </div>
-            <div class="footer">
-              <p>Best regards,</p>
-              <p>The Kaleo Gym Team</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  };
-  
+  await changePasswordMail(user)
 
-  await transporter.sendMail(mailOptions);
+
+  // const mailOptions = {
+  //   from: `"Kaleo Gym 💪💪" <${process.env.EMAIL_USERNAME}>`,
+  //   to: user.email,
+  //   subject: 'Your Password Has Been Changed',
+  //   html: `
+  //     <html>
+  //       <head>
+  //         <style>
+  //           body {
+  //             font-family: Arial, sans-serif;
+  //             background-color: #f0f0f0;
+  //             color: #333;
+  //             padding: 20px;
+  //           }
+  //           .container {
+  //             max-width: 600px;
+  //             margin: 0 auto;
+  //             background-color: #ffffff;
+  //             padding: 20px;
+  //             border-radius: 8px;
+  //             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  //           }
+  //           .header {
+  //             background-color: #4CAF50;
+  //             color: white;
+  //             padding: 10px;
+  //             text-align: center;
+  //             border-top-left-radius: 8px;
+  //             border-top-right-radius: 8px;
+  //           }
+  //           .content {
+  //             padding: 20px;
+  //           }
+  //           .footer {
+  //             margin-top: 20px;
+  //             text-align: center;
+  //             color: #666;
+  //             font-size: 12px;
+  //           }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <div class="container">
+  //           <div class="header">
+  //             <h2>Your Password Has Been Changed</h2>
+  //           </div>
+  //           <div class="content">
+  //             <p>Hello,</p>
+  //             <p>This is a confirmation that the password for your account <strong>${user.email}</strong> has just been changed.</p>
+  //             <p>If you did not make this change, please contact our support immediately.</p>
+  //           </div>
+  //           <div class="footer">
+  //             <p>Best regards,</p>
+  //             <p>The Kaleo Gym Team</p>
+  //           </div>
+  //         </div>
+  //       </body>
+  //     </html>
+  //   `
+  // };
+  
+  // await transporter.sendMail(mailOptions);
 
   res.status(200).json({ success: true, message: 'Password reset successful' });
 });
-
-
-
-
-// const updateUser = asyncHandler(async (req, res) => {
-//   const userId = req.params.id;
-//   const updates = req.body;
-
-//   try {
-//     // Find the user by ID
-//     let user = await userData.findById(userId);
-
-//     // Check if the user exists
-//     if (!user) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-
-//     // Exclude password field from updates
-//     delete updates.password;
-
-//     // Update user fields
-//     for (const key in updates) {
-//       user[key] = updates[key];
-//     }
-
-//     // Save the updated user
-//     user = await user.save();
-
-//     // Omit password field from response
-//     user.password = undefined;
-
-//     res.status(200).json({ success: true, user });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
-
-// const changePassword = asyncHandler(async (req, res) => {
-//   const { userId } = req.params;
-//   const { currentPassword, newPassword } = req.body;
-
-//   try {
-//     // Find the user by ID
-//     const user = await userData.findById(userId);
-
-//     // Check if the user exists
-//     if (!user) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-
-//     // Check if the current password provided matches the stored password
-//     const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
-//     if (!isPasswordMatch) {
-//       return res.status(401).json({ error: 'Current password is incorrect' });
-//     }
-
-//     // Hash the new password
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-//     // Update the user's password
-//     user.password = hashedPassword;
-
-//     // Save the updated user
-//     await user.save();
-
-//     // Respond with success message
-//     res.status(200).json({ success: true, message: 'Password updated successfully' });
-//   } catch (error) {
-//     console.error('Error updating password:', error);
-//     res.status(500).json({ error: 'Server error' });
-//   }
-// });
-
 
 module.exports = { 
     registerUser,
@@ -943,6 +765,7 @@ module.exports = {
     logoutUser,
     deleteUser,
     updateUser,
+    updateProfileImage,
     updatePassword,
     initiatePasswordReset,
     resetPassword,

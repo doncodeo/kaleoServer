@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const {protect, adminOnly, superAdminOnly, errorHandler} = require('../Middleware/authMiddleWare');
+const upload = require('../Middleware/multer')
+const {
+    protect, 
+    adminOnly, 
+    superAdminOnly, 
+    errorHandler
+} = require('../Middleware/authMiddleWare');
 
 const {
     registerUser,
@@ -10,6 +16,7 @@ const {
     logoutUser,
     deleteUser,
     updateUser,
+    updateProfileImage,
     getUsersBySubscription,
     initiatePasswordReset,
     resetPassword,
@@ -25,6 +32,7 @@ router.route('/create').post(protect, adminOnly, createUser);
 router.route('/login').post(loginUser); 
 router.route('/logout').get(logoutUser);  
 router.route('/update/:id').put(protect, adminOnly, updateUser); 
+router.route('/avatar/:id').put(protect, upload.single("image"), updateProfileImage)
 router.route('/passwordreset').post(initiatePasswordReset);
 router.route('/passwordreset/:token').post(resetPassword)
 

@@ -46,7 +46,7 @@ const startServer = async () => {
     });
 
  
-    cron.schedule('* * * * *', async () => { //updates every DAY
+    cron.schedule('0 0 * * *', async () => { //updates every DAY
       console.log('Running cron job to update expired subscriptions...');
     
       try {

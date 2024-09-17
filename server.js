@@ -34,6 +34,8 @@ const startServer = async () => {
     app.use('/api/user', require('./Routes/userRoute'));
     app.use('/api/subscription', require('./Routes/subscriptionRoute')); 
     app.use('/api/payment', require('./Routes/paymentRoute'));
+    app.use('/api/attendance', require('./Routes/attendanceRoute'));
+
 
     // Serve static files from the 'public' directory (optional)
     app.use(express.static(path.join(__dirname, 'public')));

@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const attendanceSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  clockInTime: {
+    type: Date,
+    required: false
+  },
+  clockOutTime: {
+    type: Date,
+    required: false
+  }
+}, { _id: false }); // Use `_id: false` to avoid generating a separate `_id` for each attendance record
+
 const subscriptionDetailsSchema = new mongoose.Schema({
   subscriptionId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -78,6 +94,7 @@ const userSchema = new mongoose.Schema({
     enum: ['single', 'couples', 'organization, group'],
   },
   subscriptions: [subscriptionDetailsSchema], // Array of subscriptions
+  attendance: [attendanceSchema], // Include the attendance schema as an array
   paymentMethod: { 
     type: String,
     enum: ['cash', 'transfer', 'paypal'],
